@@ -100,14 +100,16 @@ func (m *Metrics) Poll() {
 
 func (m *Metrics) Report(format string) error {
 	var urls []string
+	// TODO: refactor this to metrics.Dump(...) or smth
 	m.Lock()
 	for k, v := range m.gauges {
-		url := fmt.Sprintf("https://goprac.free.beeceptor.com/update/gauge/%s/%.2f", k, v)
+		// TODO: move host to const/config/envvar
+		url := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%.2f", k, v)
 		urls = append(urls, url)
 	}
 
 	for k, v := range m.counters {
-		url := fmt.Sprintf("https://goprac.free.beeceptor.com/update/counter/%s/%d", k, v)
+		url := fmt.Sprintf("https://localhost:8080/update/counter/%s/%d", k, v)
 		urls = append(urls, url)
 	}
 	m.Unlock()
@@ -118,6 +120,8 @@ func (m *Metrics) Report(format string) error {
 		u := url
 		go func() {
 			defer wg.Done()
+			// TODO: process err
+			// TODO: timeout
 			http.Post(u, "text/plain", nil)
 		}()
 	}
