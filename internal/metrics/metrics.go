@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -120,9 +121,11 @@ func (m *Metrics) Report(format string) error {
 		u := url
 		go func() {
 			defer wg.Done()
-			// TODO: process err
-			// TODO: timeout
-			http.Post(u, "text/plain", nil)
+			resp, err := http.Post(u, "text/plain", nil)
+			if err != nil {
+				log.Printf("failed to send metrics: %e", err)
+			}
+			resp.Body.Close()
 		}()
 	}
 	wg.Wait()
