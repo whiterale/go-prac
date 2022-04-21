@@ -75,9 +75,8 @@ func (m *Metrics) populateMemStats() {
 }
 
 func (m *Metrics) populatePollCounter() {
-	m.Lock()
-	defer m.Unlock()
-
+	// m.Lock()
+	// defer m.Unlock()
 	if _, ok := m.counters["PollCount"]; ok {
 		m.counters["PollCount"]++
 	} else {
@@ -86,8 +85,8 @@ func (m *Metrics) populatePollCounter() {
 }
 
 func (m *Metrics) populateRandomValue() {
-	m.Lock()
-	defer m.Unlock()
+	// m.Lock()
+	// defer m.Unlock()
 	m.gauges["RandomValue"] = gauge(rand.Float64())
 }
 
@@ -102,7 +101,7 @@ func (m *Metrics) Poll() {
 func (m *Metrics) Report(format string) error {
 	var urls []string
 	// TODO: refactor this to metrics.Dump(...) or smth
-	m.Lock()
+	// m.Lock()
 	for k, v := range m.gauges {
 		// TODO: move host to const/config/envvar
 		url := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%.2f", k, v)
@@ -113,7 +112,7 @@ func (m *Metrics) Report(format string) error {
 		url := fmt.Sprintf("https://localhost:8080/update/counter/%s/%d", k, v)
 		urls = append(urls, url)
 	}
-	m.Unlock()
+	// m.Unlock()
 
 	var wg sync.WaitGroup
 	for _, url := range urls {
