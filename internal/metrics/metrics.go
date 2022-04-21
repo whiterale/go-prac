@@ -66,15 +66,29 @@ func (m *Metrics) populateMemStats() {
 }
 
 func (m *Metrics) populatePollCounter() {
-	if _, ok := m.counters["PollCount"]; ok {
-		m.counters["PollCount"]++
-	} else {
-		m.counters["PollCount"] = 1
-	}
+	m.counters["PollCount"] += 1
 }
 
 func (m *Metrics) populateRandomValue() {
 	m.gauges["RandomValue"] = gauge(rand.Float64())
+}
+
+func (m *Metrics) dumpCounters(format string) []string {
+	var res []string
+	for k, v := range m.counters {
+		str := fmt.Sprintf(format, k, v)
+		res = append(res, str)
+	}
+	return res
+}
+
+func (m *Metrics) dumpGauges(format string) []string {
+	var res []string
+	for k, v := range m.gauges {
+		str := fmt.Sprintf(format, k, v)
+		res = append(res, str)
+	}
+	return res
 }
 
 func (m *Metrics) Poll() {
@@ -85,21 +99,12 @@ func (m *Metrics) Poll() {
 }
 
 func (m *Metrics) Report(format string) error {
-	var urls []string
-	// TODO: refactor this to metrics.Dump(...) or smth
-	for k, v := range m.gauges {
-		// TODO: move host to const/config/envvar
-		url := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%.2f", k, v)
-		urls = append(urls, url)
-	}
 
-	for k, v := range m.counters {
-		url := fmt.Sprintf("https://localhost:8080/update/counter/%s/%d", k, v)
-		urls = append(urls, url)
-	}
+	gauges := m.dumpGauges("http://localhost:8080/update/gauge/%s/%.2f")
+	counters := m.dumpCounters("https://localhost:8080/update/counter/%s/%d")
 
 	var wg sync.WaitGroup
-	for _, url := range urls {
+	for _, url := range append(gauges, counters...) {
 		wg.Add(1)
 		u := url
 		go func() {
