@@ -12,13 +12,7 @@ import (
 type gauge float64
 type counter int64
 
-// type PollReporter interface {
-// 	Poll() error
-// 	Report(string) ([]string, error)
-// }
-
 type Metrics struct {
-	sync.Mutex
 	memstats *runtime.MemStats
 	gauges   map[string]gauge
 	counters map[string]counter
@@ -34,9 +28,6 @@ func Init() *Metrics {
 func (m *Metrics) populateMemStats() {
 	memstats := &runtime.MemStats{}
 	runtime.ReadMemStats(memstats)
-
-	m.Lock()
-	defer m.Unlock()
 
 	m.gauges["Alloc"] = gauge(memstats.Alloc)
 	m.gauges["BuckHashSys"] = gauge(memstats.BuckHashSys)
@@ -75,8 +66,6 @@ func (m *Metrics) populateMemStats() {
 }
 
 func (m *Metrics) populatePollCounter() {
-	// m.Lock()
-	// defer m.Unlock()
 	if _, ok := m.counters["PollCount"]; ok {
 		m.counters["PollCount"]++
 	} else {
@@ -85,13 +74,10 @@ func (m *Metrics) populatePollCounter() {
 }
 
 func (m *Metrics) populateRandomValue() {
-	// m.Lock()
-	// defer m.Unlock()
 	m.gauges["RandomValue"] = gauge(rand.Float64())
 }
 
 func (m *Metrics) Poll() {
-
 	m.populateMemStats()
 	m.populatePollCounter()
 	m.populateRandomValue()
@@ -101,7 +87,6 @@ func (m *Metrics) Poll() {
 func (m *Metrics) Report(format string) error {
 	var urls []string
 	// TODO: refactor this to metrics.Dump(...) or smth
-	// m.Lock()
 	for k, v := range m.gauges {
 		// TODO: move host to const/config/envvar
 		url := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%.2f", k, v)
@@ -112,7 +97,6 @@ func (m *Metrics) Report(format string) error {
 		url := fmt.Sprintf("https://localhost:8080/update/counter/%s/%d", k, v)
 		urls = append(urls, url)
 	}
-	// m.Unlock()
 
 	var wg sync.WaitGroup
 	for _, url := range urls {
@@ -123,6 +107,7 @@ func (m *Metrics) Report(format string) error {
 			resp, err := http.Post(u, "text/plain", nil)
 			if err != nil {
 				log.Printf("failed to send metrics: %e", err)
+				return
 			}
 			resp.Body.Close()
 		}()
