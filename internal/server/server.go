@@ -1,39 +1,81 @@
 package server
 
 import (
+	"log"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/whiterale/go-prac/internal/repo"
 )
 
-type Metric struct {
-	Type string
-	Val  float64
+type Gauge struct {
+	name  string
+	value float64
 }
 
-func (m *Metric) GetValue() float64 {
-	return m.Val
+func (g *Gauge) Value() interface{} {
+	return g.value
 }
 
-func (m *Metric) GetType() string {
-	return m.Type
+func (g *Gauge) Name() string {
+	return g.name
 }
 
-func getMetricFromURL(url string) (*Metric, error) {
-	return nil, nil
+type Counter struct {
+	name  string
+	value int64
+}
+
+func (c *Counter) Value() interface{} {
+	return c.value
+}
+
+func (c *Counter) Name() string {
+	return c.name
 }
 
 type Server struct {
 	Repo repo.Storer
 }
 
-func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
-	url := req.URL.Path[1:] // remove heading slash
-	metric, err := getMetricFromURL(url)
+func (s *Server) CounterUpdate(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	metric := &Counter{}
+
+	metric.name = vars["name"]
+
+	value, err := strconv.ParseInt(vars["value"], 10, 64)
 	if err != nil {
-		http.Error(w, "Bad request", 400)
-		return
+		log.Printf("Failed to parse int value for counter metric: %s", vars["value"])
 	}
-	go s.Repo.Store(metric)
-	w.Write([]byte(req.URL.Path))
+	metric.value = value
+	s.Repo.Store("counter", metric)
+	return
+}
+
+func (s *Server) GaugeUpdate(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	metric := &Gauge{}
+
+	metric.name = vars["name"]
+
+	value, err := strconv.ParseFloat(vars["value"], 64)
+	if err != nil {
+		log.Printf("Failed to parse float value for gauge mteric: %s", vars["value"])
+	}
+	metric.value = value
+	s.Repo.Store("gauge", metric)
+	return
+}
+
+func Listen() {
+	srv := Server{Repo: repo.DevNull{}}
+
+	updateRouter := mux.NewRouter()
+	updateRouter.HandleFunc("/update/counter/{name:[a-zA-Z]+}/{value:[0-9]+}", srv.CounterUpdate)
+	updateRouter.HandleFunc("/update/gauge/{name:[a-zA-Z]+}/{value:[0-9]+\\.[0-9]*}", srv.GaugeUpdate)
+	http.Handle("/", updateRouter)
+	log.Print("Listening...")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
