@@ -9,72 +9,52 @@ import (
 	"github.com/whiterale/go-prac/internal/repo"
 )
 
-type Gauge struct {
+type Metric struct {
+	kind  string
 	name  string
 	value float64
 }
 
-func (g *Gauge) Value() interface{} {
-	return g.value
+func (m *Metric) ValueInt() int64 {
+	return int64(m.value)
 }
 
-func (g *Gauge) Name() string {
-	return g.name
+func (m *Metric) ValueFloat() float64 {
+	return m.value
 }
 
-type Counter struct {
-	name  string
-	value int64
+func (m *Metric) Name() string {
+	return m.name
 }
 
-func (c *Counter) Value() interface{} {
-	return c.value
-}
-
-func (c *Counter) Name() string {
-	return c.name
+func (m *Metric) Kind() string {
+	return m.kind
 }
 
 type Server struct {
 	Repo repo.Storer
 }
 
-func (s *Server) CounterUpdate(w http.ResponseWriter, req *http.Request) {
+func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	metric := &Counter{}
-
-	metric.name = vars["name"]
-
-	value, err := strconv.ParseInt(vars["value"], 10, 64)
-	if err != nil {
-		log.Printf("Failed to parse int value for counter metric: %s", vars["value"])
-	}
-	metric.value = value
-	s.Repo.Store("counter", metric)
-	return
-}
-
-func (s *Server) GaugeUpdate(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	metric := &Gauge{}
-
-	metric.name = vars["name"]
-
+	name, kind := vars["name"], vars["kind"]
 	value, err := strconv.ParseFloat(vars["value"], 64)
 	if err != nil {
 		log.Printf("Failed to parse float value for gauge mteric: %s", vars["value"])
+		http.Error(w, "Bad request", 400)
+		return
 	}
-	metric.value = value
-	s.Repo.Store("gauge", metric)
-	return
+
+	metric := &Metric{kind, name, value}
+	log.Printf("%v+", metric)
+	s.Repo.Store(metric)
 }
 
 func Listen() {
-	srv := Server{Repo: repo.DevNull{}}
+	srv := Server{Repo: repo.InitInMemory()}
 
 	updateRouter := mux.NewRouter()
-	updateRouter.HandleFunc("/update/counter/{name:[a-zA-Z]+}/{value:[0-9]+}", srv.CounterUpdate)
-	updateRouter.HandleFunc("/update/gauge/{name:[a-zA-Z]+}/{value:[0-9]+\\.[0-9]*}", srv.GaugeUpdate)
+	updateRouter.HandleFunc("/update/{kind}/{name}/{value}", srv.Update)
 	http.Handle("/", updateRouter)
 	log.Print("Listening...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
