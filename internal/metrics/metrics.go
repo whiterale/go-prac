@@ -100,7 +100,7 @@ func (m *Metrics) Poll() {
 func (m *Metrics) Report(format string) error {
 
 	gauges := m.dumpGauges("http://localhost:8080/update/gauge/%s/%.2f")
-	counters := m.dumpCounters("https://localhost:8080/update/counter/%s/%d")
+	counters := m.dumpCounters("http://localhost:8080/update/counter/%s/%d")
 
 	var wg sync.WaitGroup
 	for _, url := range append(gauges, counters...) {

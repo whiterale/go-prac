@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"log"
 	"sync"
 )
@@ -14,6 +15,8 @@ type NameValuer interface {
 
 type Storer interface {
 	Store(NameValuer) error
+	Get(string, string) (string, bool)
+	GetAll() map[string]string
 }
 
 type DevNull struct{}
@@ -43,6 +46,17 @@ func InitInMemory() *InMemory {
 	}
 }
 
+func (im *InMemory) GetAll() map[string]string {
+	res := make(map[string]string)
+	for k, v := range im.gauges {
+		res[k] = fmt.Sprintf("%.2f", v)
+	}
+	for k, v := range im.counters {
+		res[k] = fmt.Sprintf("%d", v)
+	}
+	return res
+}
+
 func (im *InMemory) Store(m NameValuer) error {
 	im.Lock()
 	defer im.Unlock()
@@ -54,4 +68,16 @@ func (im *InMemory) Store(m NameValuer) error {
 		im.counters[metricName] += m.ValueInt()
 	}
 	return nil
+}
+
+func (im *InMemory) Get(kind string, name string) (string, bool) {
+	if kind == "gauge" {
+		value, ok := im.gauges[name]
+		return fmt.Sprintf("%f", value), ok
+	}
+	if kind == "counter" {
+		value, ok := im.counters[name]
+		return fmt.Sprintf("%d", value), ok
+	}
+	return "", false
 }
