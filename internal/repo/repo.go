@@ -46,11 +46,12 @@ func InitInMemory() *InMemory {
 func (im *InMemory) Store(m NameValuer) error {
 	im.Lock()
 	defer im.Unlock()
+	metricName := m.Name()
 	switch m.Kind() {
 	case "gauge":
-		im.gauges[m.Name()] = m.ValueFloat()
+		im.gauges[metricName] = m.ValueFloat()
 	case "counter":
-		im.counters[m.Name()] += 1
+		im.counters[metricName] += m.ValueInt()
 	}
 	return nil
 }

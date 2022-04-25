@@ -10,17 +10,18 @@ import (
 )
 
 type Metric struct {
-	kind  string
-	name  string
-	value float64
+	kind       string
+	name       string
+	valueFloat float64
+	valueInt   int64
 }
 
 func (m *Metric) ValueInt() int64 {
-	return int64(m.value)
+	return m.valueInt
 }
 
 func (m *Metric) ValueFloat() float64 {
-	return m.value
+	return m.valueFloat
 }
 
 func (m *Metric) Name() string {
@@ -38,14 +39,31 @@ type Server struct {
 func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	name, kind := vars["name"], vars["kind"]
-	value, err := strconv.ParseFloat(vars["value"], 64)
-	if err != nil {
-		log.Printf("Failed to parse float value for gauge mteric: %s", vars["value"])
-		http.Error(w, "Bad request", 400)
+
+	if kind != "gauge" && kind != "counter" {
+		http.Error(w, "Wrong metric kind", 501)
 		return
 	}
+	metric := &Metric{kind, name, 0, 0}
+	if kind == "gauge" {
+		value, err := strconv.ParseFloat(vars["value"], 64)
+		if err != nil {
+			log.Printf("Failed to parse float value for gauge metric: %s", vars["value"])
+			http.Error(w, "Bad request", 400)
+			return
+		}
+		metric.valueFloat = value
+	}
+	if kind == "counter" {
+		value, err := strconv.ParseInt(vars["value"], 10, 64)
+		if err != nil {
+			log.Printf("Failed to parse float value for gauge metric: %s", vars["value"])
+			http.Error(w, "Bad request", 400)
+			return
+		}
+		metric.valueInt = value
+	}
 
-	metric := &Metric{kind, name, value}
 	log.Printf("%v+", metric)
 	s.Repo.Store(metric)
 }
