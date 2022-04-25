@@ -41,7 +41,7 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 	name, kind := vars["name"], vars["kind"]
 
 	if kind != "gauge" && kind != "counter" {
-		http.Error(w, "Wrong metric kind", 501)
+		http.Error(w, "Wrong metric kind", http.StatusNotImplemented)
 		return
 	}
 	metric := &Metric{kind, name, 0, 0}
@@ -49,7 +49,7 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 		value, err := strconv.ParseFloat(vars["value"], 64)
 		if err != nil {
 			log.Printf("Failed to parse float value for gauge metric: %s", vars["value"])
-			http.Error(w, "Bad request", 400)
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 		metric.valueFloat = value
@@ -58,7 +58,7 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 		value, err := strconv.ParseInt(vars["value"], 10, 64)
 		if err != nil {
 			log.Printf("Failed to parse float value for gauge metric: %s", vars["value"])
-			http.Error(w, "Bad request", 400)
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 		metric.valueInt = value
