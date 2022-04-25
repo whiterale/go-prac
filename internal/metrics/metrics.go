@@ -95,7 +95,6 @@ func (m *Metrics) Poll() {
 	m.populateMemStats()
 	m.populatePollCounter()
 	m.populateRandomValue()
-
 }
 
 func (m *Metrics) Report(format string) error {
