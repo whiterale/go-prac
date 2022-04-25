@@ -49,7 +49,7 @@ func InitInMemory() *InMemory {
 func (im *InMemory) GetAll() map[string]string {
 	res := make(map[string]string)
 	for k, v := range im.gauges {
-		res[k] = fmt.Sprintf("%.2f", v)
+		res[k] = fmt.Sprintf("%g", v)
 	}
 	for k, v := range im.counters {
 		res[k] = fmt.Sprintf("%d", v)
@@ -73,7 +73,7 @@ func (im *InMemory) Store(m NameValuer) error {
 func (im *InMemory) Get(kind string, name string) (string, bool) {
 	if kind == "gauge" {
 		value, ok := im.gauges[name]
-		return fmt.Sprintf("%f", value), ok
+		return fmt.Sprintf("%g", value), ok
 	}
 	if kind == "counter" {
 		value, ok := im.counters[name]
