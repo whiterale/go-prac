@@ -94,10 +94,14 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 }
 
 var head *template.Template
+var headSrc = `{{range $index, $element := .}}
+{{$index}}={{$element}}
+{{end}}
+`
 
 func Listen() {
 	srv := Server{Repo: repo.InitInMemory()}
-	head = template.Must(template.ParseFiles("head.html"))
+	head = template.Must(template.New("head").Parse(headSrc))
 	r := chi.NewRouter()
 	r.Post("/update/{kind}/{name}/{value}", srv.Update)
 	r.Get("/value/{kind}/{name}", srv.Value)
