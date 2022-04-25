@@ -24,15 +24,18 @@ func TestServer_Update(t *testing.T) {
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL)
+	resp.Body.Close()
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	assert.NoError(t, err)
 
 	resp, err = http.Post(ts.URL+"/update/gauge/g1/100.1", "text/plain", nil)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	resp.Body.Close()
 	assert.NoError(t, err)
 
 	resp, err = http.Get(ts.URL + "/value/gauge/g1")
 	body, _ := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	assert.NoError(t, err)
 	assert.Equal(t, "100.1", string(body))
 }
