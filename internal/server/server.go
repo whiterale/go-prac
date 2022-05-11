@@ -1,36 +1,36 @@
 package server
 
 import (
+	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/whiterale/go-prac/internal/repo"
 )
 
 type Metric struct {
-	kind       string
-	name       string
-	valueFloat float64
-	valueInt   int64
+	MType string   `json:"type"`
+	ID    string   `json:"id"`
+	Value *float64 `json:"value,omitempty"`
+	Delta *int64   `json:"delta,omitempty"`
 }
 
 func (m *Metric) ValueInt() int64 {
-	return m.valueInt
+	return *m.Delta
 }
 
 func (m *Metric) ValueFloat() float64 {
-	return m.valueFloat
+	return *m.Value
 }
 
 func (m *Metric) Name() string {
-	return m.name
+	return m.ID
 }
 
 func (m *Metric) Kind() string {
-	return m.kind
+	return m.MType
 }
 
 type Server struct {
@@ -38,37 +38,13 @@ type Server struct {
 }
 
 func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
-
-	name := chi.URLParam(req, "name")
-	kind := chi.URLParam(req, "kind")
-	rawValue := chi.URLParam(req, "value")
-
-	log.Printf("name:%s, kind:%s, val:%s", name, kind, rawValue)
-
-	if kind != "gauge" && kind != "counter" {
-		http.Error(w, "Wrong metric kind", http.StatusNotImplemented)
+	var metric Metric
+	err := json.NewDecoder(req.Body).Decode(&metric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metric := &Metric{kind, name, 0, 0}
-	if kind == "gauge" {
-		value, err := strconv.ParseFloat(rawValue, 64)
-		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		metric.valueFloat = value
-	}
-	if kind == "counter" {
-		value, err := strconv.ParseInt(rawValue, 10, 64)
-		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		metric.valueInt = value
-	}
-
-	log.Printf("%v+", metric)
-	s.Repo.Store(metric)
+	s.Repo.Store(&metric)
 }
 
 func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
