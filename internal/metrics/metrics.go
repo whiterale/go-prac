@@ -1,12 +1,16 @@
 package metrics
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"sync"
+
+	"github.com/whiterale/go-prac/internal/server"
 )
 
 type gauge float64
@@ -90,6 +94,34 @@ func (m *Metrics) dumpGauges(format string) []string {
 	return res
 }
 
+func (m *Metrics) dumpGaugesJSON() []*server.Metric {
+	res := make([]*server.Metric, 0, len(m.gauges))
+	for k, v := range m.gauges {
+		delta := float64(v)
+		metric := &server.Metric{
+			MType: "gauge",
+			ID:    k,
+			Value: &delta,
+		}
+		res = append(res, metric)
+	}
+	return res
+}
+
+func (m *Metrics) dumpCountersJSON() []*server.Metric {
+	res := make([]*server.Metric, 0, len(m.gauges))
+	for k, v := range m.counters {
+		delta := int64(v)
+		metric := &server.Metric{
+			MType: "counter",
+			ID:    k,
+			Delta: &delta,
+		}
+		res = append(res, metric)
+	}
+	return res
+}
+
 func (m *Metrics) Poll() {
 	m.populateMemStats()
 	m.populatePollCounter()
@@ -98,22 +130,26 @@ func (m *Metrics) Poll() {
 
 func (m *Metrics) Report(format string) error {
 
-	gauges := m.dumpGauges("http://localhost:8080/update/gauge/%s/%.2f")
-	counters := m.dumpCounters("http://localhost:8080/update/counter/%s/%d")
+	gauges := m.dumpGaugesJSON()
+	counters := m.dumpCountersJSON()
 
 	var wg sync.WaitGroup
-	for _, url := range append(gauges, counters...) {
+	for _, metric := range append(gauges, counters...) {
 		wg.Add(1)
-		u := url
-		go func() {
+
+		go func(m *server.Metric) {
 			defer wg.Done()
-			resp, err := http.Post(u, "text/plain", nil)
+			payload, _ := json.Marshal(m)
+			resp, err := http.Post("http://localhost:8080/update", "application/json", bytes.NewReader([]byte(payload)))
 			if err != nil {
 				log.Printf("failed to send metrics: %e", err)
 				return
 			}
+			if resp.StatusCode != http.StatusCreated {
+				log.Printf("Got %d, expected %d", resp.StatusCode, http.StatusCreated)
+			}
 			resp.Body.Close()
-		}()
+		}(metric)
 	}
 	wg.Wait()
 	return nil
