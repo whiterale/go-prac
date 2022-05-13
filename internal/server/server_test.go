@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -26,9 +27,22 @@ const (
 		"type": "gauge",
 		"value": 420.69
 	}`
+
+	GetCounterJSON = `{
+		"id": "some-counter",
+		"type": "counter"
+	}`
+
+	GetGaugeJSON = `{
+		"id": "some-gauge",
+		"type": "gauge"
+	}`
 )
 
+// TODO: refactor to table tests
 func TestServer_Update(t *testing.T) {
+
+	var metric Metric
 
 	repo := repo.InitInMemory()
 	srv := Server{repo}
@@ -55,4 +69,17 @@ func TestServer_Update(t *testing.T) {
 	gaugeVal, ok := srv.Repo.Get("gauge", "some-gauge")
 	assert.True(t, ok)
 	assert.Equal(t, gaugeVal, fmt.Sprintf("%g", 420.69))
+
+	res, _ := http.Post(ts.URL+valueURL, "application/json", bytes.NewReader([]byte(GetGaugeJSON)))
+	assert.NoError(t, json.NewDecoder(res.Body).Decode(&metric))
+
+	assert.Equal(t, metric.ID, "some-gauge")
+	assert.Equal(t, 420.69, *metric.Value)
+
+	res, _ = http.Post(ts.URL+valueURL, "application/json", bytes.NewReader([]byte(GetCounterJSON)))
+	assert.NoError(t, json.NewDecoder(res.Body).Decode(&metric))
+
+	assert.Equal(t, metric.ID, "some-counter")
+	assert.Equal(t, int64(42*2), *metric.Delta)
+
 }

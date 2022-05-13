@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/whiterale/go-prac/internal/repo"
@@ -48,19 +49,35 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
-	log.Print("value handler")
-	name := chi.URLParam(req, "name")
-	kind := chi.URLParam(req, "kind")
-
-	log.Printf("%s, %s", name, kind)
-	res, ok := s.Repo.Get(kind, name)
-	log.Printf("%s", res)
-	if ok {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(res))
+	var metric Metric
+	err := json.NewDecoder(req.Body).Decode(&metric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Error(w, "Not found", http.StatusNotFound)
+
+	// TODO: Repo.Get -> func (repo.Storer).Get(string, string) (interface{}, bool)
+	rawValue, ok := s.Repo.Get(metric.MType, metric.ID)
+
+	if !ok {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	if metric.MType == "gauge" {
+		value, _ := strconv.ParseFloat(rawValue, 64)
+		metric.Value = &value
+	}
+
+	if metric.MType == "counter" {
+		value, _ := strconv.ParseInt(rawValue, 10, 64)
+		metric.Delta = &value
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(metric)
 }
 
 func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
@@ -79,8 +96,8 @@ func Listen() {
 	srv := Server{Repo: repo.InitInMemory()}
 	head = template.Must(template.New("head").Parse(headSrc))
 	r := chi.NewRouter()
-	r.Post("/update/{kind}/{name}/{value}", srv.Update)
-	r.Get("/value/{kind}/{name}", srv.Value)
+	r.Post("/update", srv.Update)
+	r.Get("/value", srv.Value)
 	r.Get("/", srv.Head)
 	log.Print("Listening...")
 	log.Fatal(http.ListenAndServe(":8080", r))
