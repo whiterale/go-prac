@@ -18,7 +18,7 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	agent := agent.Init(
-		&reporters.HTTPPlainText{"http://localhost:8080"},
+		&reporters.HTTPPlainText{Host: "http://localhost:8080"},
 		buffer.Init(),
 		[]agent.Collector{&collectors.Random{}, &collectors.PollCounter{}, &collectors.Runtime{}},
 	)

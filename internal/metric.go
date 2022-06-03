@@ -13,7 +13,7 @@ type Metric struct {
 
 func (m *Metric) String() string {
 	if m.MType == "gauge" {
-		return fmt.Sprintf("%s/%s/%f", m.MType, m.ID, *m.Value)
+		return fmt.Sprintf("%s/%s/%g", m.MType, m.ID, *m.Value)
 	}
 	if m.MType == "counter" {
 		return fmt.Sprintf("%s/%s/%d", m.MType, m.ID, *m.Delta)
@@ -23,10 +23,10 @@ func (m *Metric) String() string {
 
 func (m *Metric) PlainText() string {
 	if m.MType == "gauge" {
-		return fmt.Sprintf("%s %f", m.ID, *m.Value)
+		return fmt.Sprintf("%g", *m.Value)
 	}
 	if m.MType == "counter" {
-		return fmt.Sprintf("%s %d", m.ID, *m.Delta)
+		return fmt.Sprintf("%d", *m.Delta)
 	}
 	return ""
 }

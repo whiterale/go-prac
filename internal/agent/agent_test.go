@@ -43,7 +43,7 @@ func TestAgent(t *testing.T) {
 	agent.Report()
 
 	var keys []string
-	for k, _ := range reporter.contentRaw {
+	for k := range reporter.contentRaw {
 		keys = append(keys, k)
 	}
 	expectedKeys := []string{
