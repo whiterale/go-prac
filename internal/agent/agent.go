@@ -1,89 +1,45 @@
 package agent
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/whiterale/go-prac/internal/metric"
+	"github.com/whiterale/go-prac/internal"
+	"github.com/whiterale/go-prac/internal/agent/collectors"
 )
 
 type Agent struct {
-	pollInterval   time.Duration
-	reportInterval time.Duration
-
-	report     interface{}
+	report     Reporter
 	buffer     Updater
 	collectors []Collector
 }
 
 type Collector interface {
-	Collect() []AgentMetric
+	Collect() []collectors.Metric
 }
 
 type Updater interface {
 	Update(string, string, interface{}) error
-	Dump() []*metric.Metric
+	Dump() []*internal.Metric
 	Flush()
 }
 
-func Init(poll time.Duration, report time.Duration, reporter interface{}, buffer Updater) *Agent {
-	return &Agent{poll, report, reporter, buffer, nil}
+type Reporter interface {
+	Report([]*internal.Metric) error
 }
 
-type AgentMetric struct {
-	ID    string
-	MType string
-	Value interface{}
+func Init(reporter Reporter, buffer Updater, collectors []Collector) *Agent {
+	return &Agent{reporter, buffer, collectors}
 }
 
 func (agent *Agent) Poll() {
 	for _, c := range agent.collectors {
 		metrics := c.Collect()
-		for _, metric := range metrics {
-			agent.buffer.Update(metric.MType, metric.ID, metric.Value)
+		for _, m := range metrics {
+			agent.buffer.Update(m.MType, m.ID, m.Value)
 		}
 	}
 }
 
-func (agent *Agent) Report() {}
-
-func (agent *Agent) Start() error {
-
-	pollTicker := time.NewTicker(agent.pollInterval)
-	reportTicker := time.NewTicker(agent.reportInterval)
-
-	defer func() {
-		pollTicker.Stop()
-		reportTicker.Stop()
-		log.Println("Bye")
-	}()
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-	for {
-		select {
-		case <-pollTicker.C:
-			log.Println("poll...")
-			for _, collector := range agent.collectors {
-				metrics := collector.Collect()
-				for _, metric := range metrics {
-					agent.buffer.Update(metric.MType, metric.ID, metric.Value)
-				}
-			}
-		case <-reportTicker.C:
-			for _, m := range agent.buffer.Dump() {
-				fmt.Printf("%s\n", m)
-			}
-			agent.buffer.Flush()
-
-		case <-signals:
-			log.Println("stop.")
-			return nil
-		}
-	}
+func (agent *Agent) Report() {
+	metrics := agent.buffer.Dump()
+	agent.report.Report(metrics)
+	agent.buffer.Flush()
 }

@@ -1,4 +1,4 @@
-package metric
+package buffer
 
 import (
 	"testing"
@@ -10,8 +10,8 @@ func TestBuffer(t *testing.T) {
 
 	buffer := Init()
 
-	assert.NoError(t, buffer.Update("counter", "a", 10))
-	assert.NoError(t, buffer.Update("counter", "a", 10))
+	assert.NoError(t, buffer.Update("counter", "a", int64(10)))
+	assert.NoError(t, buffer.Update("counter", "a", int64(10)))
 
 	m, ok := buffer.Get("counter", "a")
 	assert.True(t, ok)
@@ -65,4 +65,12 @@ func TestBufferFlush(t *testing.T) {
 	m, ok = buffer.Get("gauge", "b")
 	assert.Nil(t, m)
 	assert.False(t, ok)
+}
+
+func TestBufferDump(t *testing.T) {
+	buffer := Init()
+	assert.NoError(t, buffer.Update("gauge", "b", 10.0))
+	assert.NoError(t, buffer.Update("counter", "a", int64(1)))
+	dump := buffer.Dump()
+	assert.Equal(t, 2, len(dump))
 }
