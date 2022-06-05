@@ -1,110 +1,105 @@
 package server
 
 import (
-	"html/template"
+	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/whiterale/go-prac/internal/repo"
+	"github.com/whiterale/go-prac/internal"
+	"github.com/whiterale/go-prac/internal/agent/buffer"
 )
 
-type Metric struct {
-	kind       string
-	name       string
-	valueFloat float64
-	valueInt   int64
-}
-
-func (m *Metric) ValueInt() int64 {
-	return m.valueInt
-}
-
-func (m *Metric) ValueFloat() float64 {
-	return m.valueFloat
-}
-
-func (m *Metric) Name() string {
-	return m.name
-}
-
-func (m *Metric) Kind() string {
-	return m.kind
+type Updater interface {
+	Update(string, string, interface{}) error
+	Dump() []*internal.Metric
+	Get(string, string) (*internal.Metric, bool)
+	Flush()
 }
 
 type Server struct {
-	Repo repo.Storer
+	Storage Updater
+}
+
+func makeFloat(raw string) (float64, error) {
+	return strconv.ParseFloat(raw, 64)
+}
+
+func makeInt(raw string) (int64, error) {
+	return strconv.ParseInt(raw, 10, 64)
 }
 
 func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
-
-	name := chi.URLParam(req, "name")
-	kind := chi.URLParam(req, "kind")
+	id := chi.URLParam(req, "id")
+	mtype := chi.URLParam(req, "mtype")
 	rawValue := chi.URLParam(req, "value")
 
-	log.Printf("name:%s, kind:%s, val:%s", name, kind, rawValue)
-
-	if kind != "gauge" && kind != "counter" {
-		http.Error(w, "Wrong metric kind", http.StatusNotImplemented)
+	switch mtype {
+	case "counter":
+		value, err := makeInt(rawValue)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			log.Printf("Error parsing delta for counter: %v", err)
+			return
+		}
+		err = s.Storage.Update(mtype, id, value)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusInternalServerError)
+			log.Printf("Error updating counter: %v", err)
+			return
+		}
+		return
+	case "gauge":
+		value, err := makeFloat(rawValue)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		err = s.Storage.Update(mtype, id, value)
+		if err != nil {
+			http.Error(w, "Bad request", http.StatusInternalServerError)
+			log.Printf("Error updating gauge: %v", err)
+			return
+		}
+		return
+	default:
+		http.Error(w, "Unsuppoerted metric type", http.StatusNotImplemented)
+		log.Printf("Unsupported metric type: %s", mtype)
 		return
 	}
-	metric := &Metric{kind, name, 0, 0}
-	if kind == "gauge" {
-		value, err := strconv.ParseFloat(rawValue, 64)
-		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		metric.valueFloat = value
-	}
-	if kind == "counter" {
-		value, err := strconv.ParseInt(rawValue, 10, 64)
-		if err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-		metric.valueInt = value
-	}
-
-	log.Printf("%v+", metric)
-	s.Repo.Store(metric)
 }
 
 func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
-	log.Print("value handler")
-	name := chi.URLParam(req, "name")
-	kind := chi.URLParam(req, "kind")
 
-	log.Printf("%s, %s", name, kind)
-	res, ok := s.Repo.Get(kind, name)
-	log.Printf("%s", res)
+	mtype := chi.URLParam(req, "mtype")
+	id := chi.URLParam(req, "id")
+
+	res, ok := s.Storage.Get(mtype, id)
 	if ok {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(res))
+		w.Write([]byte(res.PlainText()))
 		return
 	}
 	http.Error(w, "Not found", http.StatusNotFound)
 }
 
 func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
-	metrics := s.Repo.GetAll()
-	log.Printf("%+v", metrics)
-	head.Execute(w, metrics)
+	metrics := s.Storage.Dump()
+	sort.SliceStable(metrics, func(i, j int) bool {
+		return metrics[i].ID < metrics[j].ID
+	})
+	for _, m := range metrics {
+		fmt.Fprintf(w, "%s\n", m.PlainText())
+	}
 }
 
-var head *template.Template
-var headSrc = `{{range $index, $element := .}}
-{{$index}}={{$element}}
-{{end}}
-`
-
 func Listen() {
-	srv := Server{Repo: repo.InitInMemory()}
-	head = template.Must(template.New("head").Parse(headSrc))
+	srv := Server{Storage: buffer.Init()}
 	r := chi.NewRouter()
-	r.Post("/update/{kind}/{name}/{value}", srv.Update)
-	r.Get("/value/{kind}/{name}", srv.Value)
+	r.Post("/update/{mtype}/{id}/{value}", srv.Update)
+	r.Get("/value/{mtype}/{id}", srv.Value)
 	r.Get("/", srv.Head)
 	log.Print("Listening...")
 	log.Fatal(http.ListenAndServe(":8080", r))
