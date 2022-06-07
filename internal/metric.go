@@ -5,10 +5,21 @@ import (
 )
 
 type Metric struct {
-	MType string
-	ID    string
-	Value *float64
-	Delta *int64
+	MType string   `json:"type"`
+	ID    string   `json:"id"`
+	Value *float64 `json:"value,omitempty"`
+	Delta *int64   `json:"delta,omitempty"`
+}
+
+func (m *Metric) GetValue() interface{} {
+	switch m.MType {
+	case "gauge":
+		return *m.Value
+	case "counter":
+		return *m.Delta
+	default:
+		return nil
+	}
 }
 
 func (m *Metric) String() string {

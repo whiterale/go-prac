@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -71,8 +72,42 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
+func (s *Server) UpdateJSON(w http.ResponseWriter, req *http.Request) {
+	var m internal.Metric
+	var err error
+	err = json.NewDecoder(req.Body).Decode(&m)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = s.Storage.Update(m.MType, m.ID, m.GetValue())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
 
+func (s *Server) ValueJSON(w http.ResponseWriter, req *http.Request) {
+
+	var m internal.Metric
+	err := json.NewDecoder(req.Body).Decode(&m)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	metric, ok := s.Storage.Get(m.MType, m.ID)
+	if !ok {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(metric)
+}
+
+func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
 	mtype := chi.URLParam(req, "mtype")
 	id := chi.URLParam(req, "id")
 
@@ -98,9 +133,14 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 func Listen() {
 	srv := Server{Storage: buffer.Init()}
 	r := chi.NewRouter()
+
 	r.Post("/update/{mtype}/{id}/{value}", srv.Update)
 	r.Get("/value/{mtype}/{id}", srv.Value)
 	r.Get("/", srv.Head)
+
+	r.Post("/update", srv.UpdateJSON)
+	r.Post("/value", srv.ValueJSON)
+
 	log.Print("Listening...")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }

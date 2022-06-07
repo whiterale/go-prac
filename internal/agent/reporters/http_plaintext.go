@@ -25,7 +25,6 @@ func (pt *HTTPPlainText) Report(metrics []*internal.Metric) error {
 				log.Printf("failed to send metrics, url=%s: %e", u, err)
 				return
 			}
-			log.Printf("%s: %d", u, resp.StatusCode)
 			resp.Body.Close()
 		}()
 	}

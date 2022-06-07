@@ -34,10 +34,8 @@ func main() {
 	for {
 		select {
 		case <-poll.C:
-			log.Println("Poll")
 			agent.Poll()
 		case <-report.C:
-			log.Println("Report")
 			agent.Report()
 		case <-signals:
 			return
