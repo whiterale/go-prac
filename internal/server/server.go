@@ -138,8 +138,8 @@ func Listen() {
 	r.Get("/value/{mtype}/{id}", srv.Value)
 	r.Get("/", srv.Head)
 
-	r.Post("/update", srv.UpdateJSON)
-	r.Post("/value", srv.ValueJSON)
+	r.Post("/update/", srv.UpdateJSON)
+	r.Post("/value/", srv.ValueJSON)
 
 	log.Print("Listening...")
 	log.Fatal(http.ListenAndServe("127.0.0.1:8080", r))
