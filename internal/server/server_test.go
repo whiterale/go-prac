@@ -93,7 +93,8 @@ func TestServer_JSON(t *testing.T) {
 	defer ts.Close()
 
 	for _, payload := range []string{CounterJSON, CounterJSON, GaugeJSON} {
-		_, err = http.Post(ts.URL+updateURL, "application/json", bytes.NewReader([]byte(payload)))
+		resp, err = http.Post(ts.URL+updateURL, "application/json", bytes.NewReader([]byte(payload)))
+		resp.Body.Close()
 		assert.NoError(t, err)
 	}
 	gauge, ok := buf.Get("gauge", "some-gauge")
@@ -104,11 +105,13 @@ func TestServer_JSON(t *testing.T) {
 
 	resp, _ = http.Post(ts.URL+valueURL, "application/json", bytes.NewReader([]byte(GetGaugeJSON)))
 	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+	resp.Body.Close()
 	assert.Equal(t, *m.Value, *gauge.Value)
 	assert.Equal(t, m.MType, gauge.MType)
 
 	resp, _ = http.Post(ts.URL+valueURL, "application/json", bytes.NewReader([]byte(GetCounterJSON)))
 	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+	resp.Body.Close()
 	assert.Equal(t, *m.Delta, *counter.Delta)
 	assert.Equal(t, m.MType, counter.MType)
 	defer ts.Close()

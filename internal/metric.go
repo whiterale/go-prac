@@ -34,10 +34,10 @@ func (m *Metric) String() string {
 
 func (m *Metric) PlainText() string {
 	if m.MType == "gauge" {
-		return fmt.Sprintf("%g", *m.Value)
+		return fmt.Sprintf("%s %g", m.ID, *m.Value)
 	}
 	if m.MType == "counter" {
-		return fmt.Sprintf("%d", *m.Delta)
+		return fmt.Sprintf("%s %d", m.ID, *m.Delta)
 	}
 	return ""
 }
