@@ -47,7 +47,7 @@ func TestAgent(t *testing.T) {
 		keys = append(keys, k)
 	}
 	expectedKeys := []string{
-		"PollCounter",
+		"PollCount",
 		"MCacheSys",
 		"Mallocs",
 		"StackInuse",
@@ -78,5 +78,5 @@ func TestAgent(t *testing.T) {
 		"PauseTotalNs",
 	}
 	assert.ElementsMatch(t, expectedKeys, keys)
-	assert.Equal(t, int64(2), int64(*reporter.contentRaw["PollCounter"].Delta))
+	assert.Equal(t, int64(2), int64(*reporter.contentRaw["PollCount"].Delta))
 }

@@ -9,11 +9,11 @@ import (
 	"github.com/whiterale/go-prac/internal"
 )
 
-type HTTPPlainText struct {
+type PlainText struct {
 	Host string
 }
 
-func (pt *HTTPPlainText) Report(metrics []*internal.Metric) error {
+func (pt *PlainText) Report(metrics []*internal.Metric) error {
 	var wg sync.WaitGroup
 	for _, m := range metrics {
 		wg.Add(1)
@@ -25,7 +25,6 @@ func (pt *HTTPPlainText) Report(metrics []*internal.Metric) error {
 				log.Printf("failed to send metrics, url=%s: %e", u, err)
 				return
 			}
-			log.Printf("%s: %d", u, resp.StatusCode)
 			resp.Body.Close()
 		}()
 	}
