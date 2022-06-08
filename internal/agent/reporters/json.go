@@ -19,7 +19,7 @@ func (j *JSON) Report(metrics []*internal.Metric) error {
 	var wg sync.WaitGroup
 	for _, m := range metrics {
 		wg.Add(1)
-		u := fmt.Sprintf("%s/update/", j.Host)
+		u := fmt.Sprintf("http://%s/update/", j.Host)
 		payload, err := json.Marshal(m)
 		if err != nil {
 			log.Printf("Failed to marshal metric %v: %v", m, err)
