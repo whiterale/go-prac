@@ -126,7 +126,7 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 		return metrics[i].ID < metrics[j].ID
 	})
 	for _, m := range metrics {
-		fmt.Fprintf(w, "%s\n", m.PlainText())
+		fmt.Fprintf(w, "%s %s\n", m.ID, m.PlainText())
 	}
 }
 
