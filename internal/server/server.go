@@ -130,7 +130,7 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Listen() {
+func Listen(addr string) {
 	srv := Server{Storage: buffer.Init()}
 	r := chi.NewRouter()
 
@@ -142,5 +142,5 @@ func Listen() {
 	r.Post("/value/", srv.ValueJSON)
 
 	log.Print("Listening...")
-	log.Fatal(http.ListenAndServe("127.0.0.1:8080", r))
+	log.Fatal(http.ListenAndServe(addr, r))
 }
