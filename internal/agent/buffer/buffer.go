@@ -19,6 +19,15 @@ func Init() *Buffer {
 	return &buffer
 }
 
+func InitWithData(data map[string]map[string]*internal.Metric) *Buffer {
+	buffer := Buffer{metrics: data}
+	return &buffer
+}
+
+func (b *Buffer) GetRawMetrics() map[string]map[string]*internal.Metric {
+	return b.metrics
+}
+
 func (b *Buffer) updateCounter(id string, delta int64) {
 	b.Lock()
 	defer b.Unlock()
