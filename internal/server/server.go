@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/whiterale/go-prac/internal"
-	"github.com/whiterale/go-prac/internal/server/storage"
 )
 
 type Updater interface {
@@ -130,8 +129,8 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Listen(addr string) {
-	srv := Server{Storage: storage.Init()}
+func Listen(srv Server, addr string) {
+
 	r := chi.NewRouter()
 
 	r.Post("/update/{mtype}/{id}/{value}", srv.Update)
