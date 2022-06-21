@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"time"
 
 	"github.com/caarlos0/env/v6"
@@ -23,6 +24,12 @@ func main() {
 		log.Printf("%+v\n", err)
 		return
 	}
+
+	for _, item := range os.Args {
+		log.Printf(" %s", item)
+	}
+	log.Println()
+	log.Println(os.Environ())
 
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore from file")
 	flag.StringVar(&cfg.Address, "a", cfg.Address, "host:port to listen")
