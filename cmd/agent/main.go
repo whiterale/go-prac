@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -25,11 +25,16 @@ type config struct {
 func main() {
 	cfg := config{}
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Printf("%+v\n", err)
 		return
 	}
-	fmt.Printf("%+v\n", cfg)
 
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "host:port to listen")
+	flag.DurationVar(&cfg.PollInterval, "p", cfg.PollInterval, "store interval")
+	flag.DurationVar(&cfg.ReportInterval, "r", cfg.ReportInterval, "store interval")
+	flag.Parse()
+
+	log.Printf("%+v\n", cfg)
 	agent := agent.Init(
 		&reporters.JSON{Host: cfg.Address},
 		buffer.Init(),
