@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/whiterale/go-prac/internal"
 )
 
@@ -134,6 +135,8 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 func Listen(srv Server, addr string) {
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.Compress(5))
 	r.Post("/update/{mtype}/{id}/{value}", srv.Update)
 	r.Get("/value/{mtype}/{id}", srv.Value)
 	r.Get("/", srv.Head)
