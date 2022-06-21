@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
 	"time"
 
 	"github.com/caarlos0/env/v6"
@@ -12,30 +11,26 @@ import (
 )
 
 type config struct {
-	Address       string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	StoreInterval time.Duration `env:"STORE_DURATION" envDefault:"10s"`
-	StoreFile     string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
-	Restore       bool          `env:"RESTORE" envDefault:"true"`
+	Address       string        `env:"ADDRESS"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	StoreFile     string        `env:"STORE_FILE"`
+	Restore       bool          `env:"RESTORE"`
 }
 
 func main() {
 	cfg := config{}
+
+	flag.BoolVar(&cfg.Restore, "r", true, "restore from file")
+	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "host:port to listen")
+	flag.StringVar(&cfg.StoreFile, "f", "/tmp/devops-metrics-db.json", "where to store data")
+	flag.DurationVar(&cfg.StoreInterval, "i", 10*time.Second, "store interval")
+	flag.Parse()
+
 	if err := env.Parse(&cfg); err != nil {
 		log.Printf("%+v\n", err)
 		return
 	}
 
-	for _, item := range os.Args {
-		log.Printf(" %s", item)
-	}
-	log.Println()
-	log.Println(os.Environ())
-
-	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore from file")
-	flag.StringVar(&cfg.Address, "a", cfg.Address, "host:port to listen")
-	flag.StringVar(&cfg.StoreFile, "f", cfg.StoreFile, "where to store data")
-	flag.DurationVar(&cfg.StoreInterval, "i", cfg.StoreInterval, "store interval")
-	flag.Parse()
 	log.Printf("%+v\n", cfg)
 
 	// TODO: Naming looks ugly
