@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -17,18 +17,24 @@ import (
 )
 
 type config struct {
-	Address        string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL" envDefault:"2s"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL" envDefault:"10s"`
+	Address        string        `env:"ADDRESS"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL"`
+	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
 }
 
 func main() {
 	cfg := config{}
+
+	flag.StringVar(&cfg.Address, "a", "127.0.0.1:8080", "host:port to listen")
+	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "store interval")
+	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "store interval")
+	flag.Parse()
+
 	if err := env.Parse(&cfg); err != nil {
-		fmt.Printf("%+v\n", err)
+		log.Printf("%+v\n", err)
 		return
 	}
-	fmt.Printf("%+v\n", cfg)
+	log.Printf("%+v\n", cfg)
 
 	agent := agent.Init(
 		&reporters.JSON{Host: cfg.Address},

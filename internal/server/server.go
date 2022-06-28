@@ -9,8 +9,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/whiterale/go-prac/internal"
-	"github.com/whiterale/go-prac/internal/agent/buffer"
 )
 
 type Updater interface {
@@ -66,7 +66,7 @@ func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 		}
 		return
 	default:
-		http.Error(w, "Unsuppoerted metric type", http.StatusNotImplemented)
+		http.Error(w, "Unsupported metric type", http.StatusNotImplemented)
 		log.Printf("Unsupported metric type: %s", mtype)
 		return
 	}
@@ -108,6 +108,7 @@ func (s *Server) ValueJSON(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	mtype := chi.URLParam(req, "mtype")
 	id := chi.URLParam(req, "id")
 
@@ -121,6 +122,7 @@ func (s *Server) Value(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	metrics := s.Storage.Dump()
 	sort.SliceStable(metrics, func(i, j int) bool {
 		return metrics[i].ID < metrics[j].ID
@@ -130,10 +132,11 @@ func (s *Server) Head(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func Listen(addr string) {
-	srv := Server{Storage: buffer.Init()}
+func Listen(srv Server, addr string) {
+
 	r := chi.NewRouter()
 
+	r.Use(middleware.Compress(5))
 	r.Post("/update/{mtype}/{id}/{value}", srv.Update)
 	r.Get("/value/{mtype}/{id}", srv.Value)
 	r.Get("/", srv.Head)
